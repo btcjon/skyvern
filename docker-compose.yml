@@ -1,10 +1,26 @@
-version: '3.8'
 services:
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    # Using Coolify's managed PostgreSQL instead
+    # volumes:
+    #   - ./postgres-data:/var/lib/postgresql/data
+    # environment:
+    #   - PGDATA=/var/lib/postgresql/data/pgdata
+    #   - POSTGRES_USER=skyvern
+    #   - POSTGRES_PASSWORD=skyvern
+    #   - POSTGRES_POSTGRES_DB=skyvern
+    # healthcheck:
+    #   test: ["CMD-SHELL", "pg_isready -U skyvern"]
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 5
+
   skyvern:
     image: public.ecr.aws/skyvern/skyvern:latest
     restart: on-failure
     ports:
-      - 8009:8000
+      - 8009:8000  # Changed port to avoid conflict
     volumes:
       - ./artifacts:/data/artifacts
       - ./videos:/data/videos
@@ -12,14 +28,54 @@ services:
       - ./log:/data/log
       - ./.streamlit:/app/.streamlit
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
+      - DATABASE_STRING=${DATABASE_URL}  # Using Coolify's database URL
       - BROWSER_TYPE=chromium-headful
-      - ENABLE_OPENAI=true
-      - LLM_KEY=${LLM_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    networks:
-      - coolify
+      - ENABLE_OPENAI=false
+      - ENABLE_ANTHROPIC=true
+      - ENABLE_AZURE=false
+      - ENABLE_BEDROCK=false
+      - ENABLE_GEMINI=false
+      - ENABLE_NOVITA=false
+      - LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+      - SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+      - OPENAI_API_KEY=<your_openai_key>
+      - ANTHROPIC_API_KEY=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
+      # If you want to use other LLM provider, like azure and anthropic:
+      # - ENABLE_ANTHROPIC=true
+      # - LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+      # - ANTHROPIC_API_KEY=<your_anthropic_key>
+      # Microsoft Azure OpenAI support:
+      # If you'd like to use Microsoft Azure OpenAI as your managed LLM service integration with Skyvern, use the environment variables below.
+      # In your Microsoft Azure subscription, you will need to provision the OpenAI service and deploy a model, in order to utilize it.
+      # 1. Login to the Azure Portal
+      # 2. Create an Azure Resource Group
+      # 3. Create an OpenAI resource in the Resource Group (choose a region and pricing tier)
+      # 4. From the OpenAI resource's Overview page, open the "Azure AI Foundry" portal (click the "Explore Azure AI Foundry Portal" button)
+      # 5. In Azure AI Foundry, click "Shared Resources" --> "Deployments"
+      # 6. Click "Deploy Model" --> "Deploy Base Model" --> select a model (specify this model "Deployment Name" value for the AZURE_DEPLOYMENT variable below)
+      # - ENABLE_AZURE=true
+      # - LLM_KEY=AZURE_OPENAI                          # Leave this value static, don't change it
+      # - AZURE_DEPLOYMENT=<your_azure_deployment>      # Use the OpenAI model "Deployment Name" that you deployed, using the steps above
+      # - AZURE_API_KEY=<your_azure_api_key>            # Copy and paste Key1 or Key2 from the OpenAI resource in Azure Portal
+      # - AZURE_API_BASE=<your_azure_api_base>          # Copy and paste the "Endpoint" from the OpenAI resource in Azure Portal (eg. https://xyzxyzxyz.openai.azure.com/)
+      # - AZURE_API_VERSION=<your_azure_api_version>    # Specify a valid Azure OpenAI data-plane API version (eg. 2024-08-01-preview) Docs: https://learn.microsoft.com/en-us/azure/ai-services/openai/reference
+      # Amazon Bedrock Support:
+      # Amazon Bedrock is a managed service that enables you to invoke LLMs and bill them through your AWS account.
+      # To use Amazon Bedrock as the LLM provider for Skyvern, specify the following environment variables.
+      # 1. In the AWS IAM console, create a new AWS IAM User (name it whatever you want)
+      # 2. Assign the "AmazonBedrockFullAccess" policy to the user
+      # 3. Generate an IAM Access Key under the IAM User's Security Credentials tab
+      # 4. In the Amazon Bedrock console, go to "Model Access"
+      # 5. Click Modify Model Access button
+      # 6. Enable "Claude 3.5 Sonnet v2" and save changes
+      # - ENABLE_BEDROCK=true
+      # - LLM_KEY=BEDROCK_ANTHROPIC_CLAUDE3.5_SONNET   # This is the Claude 3.5 Sonnet "V2" model. Change to BEDROCK_ANTHROPIC_CLAUDE3.5_SONNET_V1 for the non-v2 version.
+      # - AWS_REGION=us-west-2                         # Replace this with a different AWS region, if you desire
+      # - AWS_ACCESS_KEY_ID=FILL_ME_IN_PLEASE
+      # - AWS_SECRET_ACCESS_KEY=FILL_ME_IN_PLEASE
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "test", "-f", "/app/.streamlit/secrets.toml"]
       interval: 5s
@@ -30,22 +86,31 @@ services:
     image: public.ecr.aws/skyvern/skyvern-ui:latest
     restart: on-failure
     ports:
-      - 8081:8080
-      - 9091:9090
+      - 8081:8080  # Changed port to avoid conflict
+      - 9091:9090  # Changed port to avoid conflict
     volumes:
       - ./artifacts:/data/artifacts
       - ./videos:/data/videos
       - ./har:/data/har
       - ./.streamlit:/app/.streamlit
     environment:
-      - VITE_WSS_BASE_URL=ws://${DOMAIN:-localhost}:8009/api/v1
-      - VITE_API_BASE_URL=http://${DOMAIN:-localhost}:8009/api/v1
+      # if you want to run skyvern on a remote server,
+    # you need to change the host in VITE_WSS_BASE_URL and VITE_API_BASE_URL to match your server ip
+    # If you're self-hosting this behind a dns, you'll want to set:
+    #   A route for the API: api.yourdomain.com -> localhost:8000
+    #   A route for the UI: yourdomain.com -> localhost:8080
+    #   A route for the artifact API: artifact.yourdomain.com -> localhost:9090 (maybe not needed)
+    #   - VITE_ARTIFACT_API_BASE_URL=http://localhost:9090
+    #   - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    #   - VITE_SKYVERN_API_KEY=<get this from "settings" in the Skyvern UI>
+      - VITE_WSS_BASE_URL=ws://${DOMAIN:-localhost}:8009/api/v1  # Updated to match new port
+      - VITE_API_BASE_URL=http://${DOMAIN:-localhost}:8009/api/v1  # Updated to match new port
     networks:
-      - coolify
+      - coolify  # Added for Coolify networking
     depends_on:
       skyvern:
         condition: service_healthy
 
 networks:
   coolify:
-    external: true
+    external: true  # Added for Coolify networking
