@@ -38,6 +38,7 @@ services:
       - ENABLE_NOVITA=false
       - LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
       - SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # If you want to use other LLM provider, like azure and anthropic:
       # - ENABLE_ANTHROPIC=true
       # - LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
@@ -101,14 +102,14 @@ services:
     #   - VITE_ARTIFACT_API_BASE_URL=http://localhost:9090
     #   - VITE_API_BASE_URL=http://localhost:8000/api/v1
     #   - VITE_SKYVERN_API_KEY=<get this from "settings" in the Skyvern UI>
-      - VITE_WSS_BASE_URL=ws://${DOMAIN:-localhost}:8009/api/v1  # Updated to match new port
-      - VITE_API_BASE_URL=http://${DOMAIN:-localhost}:8009/api/v1  # Updated to match new port
+      - VITE_WSS_BASE_URL=ws://${DOMAIN:-localhost}:8009/api/v1
+      - VITE_API_BASE_URL=http://${DOMAIN:-localhost}:8009/api/v1
     networks:
-      - coolify  # Added for Coolify networking
+      - coolify
     depends_on:
       skyvern:
         condition: service_healthy
 
 networks:
   coolify:
-    external: true  # Added for Coolify networking
+    external: true
