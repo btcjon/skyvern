@@ -38,8 +38,6 @@ services:
       - ENABLE_NOVITA=false
       - LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
       - SECONDARY_LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
-      - OPENAI_API_KEY=<your_openai_key>
-      - ANTHROPIC_API_KEY=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
       # If you want to use other LLM provider, like azure and anthropic:
       # - ENABLE_ANTHROPIC=true
       # - LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
