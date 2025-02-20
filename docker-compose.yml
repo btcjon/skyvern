@@ -46,6 +46,7 @@ services:
       - ./videos:/data/videos
       - ./har:/data/har
       - ./.streamlit:/app/.streamlit
+    
     environment:
       # if you want to run skyvern on a remote server,
     # you need to change the host in VITE_WSS_BASE_URL and VITE_API_BASE_URL to match your server ip
